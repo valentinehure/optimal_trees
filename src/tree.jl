@@ -69,7 +69,7 @@ function bigger_Tree(T::Tree, new_D::Int64)
     return Tree(new_D,a,b,c)
 end
 
-function predict_leaf(T::Tree, x::Array{Float64,2})
+function predict_leaf(T::Tree, x::Array{Float64,2},mu::Float64)
     n = length(x[:,1])
     p = length(x[1,:])
     leaf = zeros(Int64,n)
@@ -77,7 +77,7 @@ function predict_leaf(T::Tree, x::Array{Float64,2})
     for i in 1:n
         t = 1
         for d in 1:T.D
-            if sum(T.a[j,t]*x[i,j] for j in 1:p) < T.b[t]
+            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= mu
                 t = t*2
             else
                 t = t*2 + 1
@@ -88,7 +88,7 @@ function predict_leaf(T::Tree, x::Array{Float64,2})
     return leaf
 end
 
-function predict_class(T::Tree, x::Array{Float64,2})
+function predict_class(T::Tree, x::Array{Float64,2}, mu::Float64)
     n = length(x[:,1])
     p = length(x[1,:])
     class = zeros(Int64,n)
@@ -96,7 +96,7 @@ function predict_class(T::Tree, x::Array{Float64,2})
     for i in 1:n
         t = 1
         for d in 1:T.D
-            if sum(T.a[j,t]*x[i,j] for j in 1:p) < T.b[t]
+            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= mu
                 t = t*2
             else
                 t = t*2 + 1

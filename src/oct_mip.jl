@@ -1,7 +1,7 @@
 using JuMP
 using CPLEX
-# using Gurobi
-# const GRB_ENV = Gurobi.Env()
+#using Gurobi
+#const GRB_ENV = Gurobi.Env()
 include("tree.jl")
 
 """
@@ -48,7 +48,7 @@ Result :\n
     - The missclassification on the training set
     - The gap between the optimal solution and the solution found if the time limit was reached.
 """
-function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64,alpha::Float64=0.0,C::Int64=0,multi_V::Bool=false,warm_start::Tree=null_Tree(),time_limit::Int64=-1)
+function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64,alpha::Float64=0.0,C::Int64=0,multi_V::Bool=false,warm_start::Tree=null_Tree())
     n = length(y)
     p = length(x[1,:])
 
@@ -91,10 +91,6 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
 
     md = Model(CPLEX.Optimizer)
 
-    if time_limit!=-1
-        set_time_limit_sec(model,time_limit)
-    end
-
     nb_lf = 2^D
     nb_br = 2^D - 1
 
@@ -136,11 +132,11 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
     for t in 1:nb_lf
         A_L,A_R = compute_LR(t,D)
         if multi_V
-            @constraint(md, [i in 1:n, m in A_L], sum(a[j,m]*x[i,j]+ mu for j in 1:p) <= b[m] + (2+mu)*(1-z[i,t]))
+            @constraint(md, [i in 1:n, m in A_L], sum(a[j,m]*x[i,j] for j in 1:p) + mu <= b[m] + (2+mu)*(1-z[i,t]))
             @constraint(md, [i in 1:n, m in A_R], sum(a[j,m]*x[i,j] for j in 1:p) >= b[m] - 2*(1-z[i,t]))
         else
             @constraint(md, [i in 1:n, m in A_R], sum(a[j,m]*x[i,j] for j in 1:p) >= b[m] - (1-z[i,t]))
-            @constraint(md,[i in 1:n,m in A_L], sum(a[j,m]*(X[i,j]+eps[j]/2) for j in 1:p)<= b[m]+(1+eps_min)*(1-z[i,t]))
+            @constraint(md,[i in 1:n,m in A_L], sum(a[j,m]*(X[i,j]+eps[j]/2) for j in 1:p)  <= b[m]+(1+eps_max)*(1-z[i,t]))
             #@constraint(md, [i in 1:n, m in A_L], sum(a[j,m]*(x[i,j] + eps[j]) for j in 1:p) <= b[m] + (1+eps_max)*(1-z[i,t])) # contrainte du papier
         end
         @constraint(md, [i in 1:n, m in A_L], z[i,t]<=d[m])
@@ -172,19 +168,19 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
         else
             @constraint(md, sum(d[t] for t in 1:nb_br) <= C)
         end
-        @objective(md,Min,sum(L[t] for t in 1:nb_lf) / L_h)
+        @objective(md,Min,sum(L[t] for t in 1:nb_lf))
     elseif alpha != 0
         if multi_V
-            @objective(md,Min,sum(L[t] for t in 1:nb_lf) / L_h + alpha*sum(s[j,t] for t in 1:nb_br for j in 1:p))
+            @objective(md,Min,sum(L[t] for t in 1:nb_lf) + L_h*alpha*sum(s[j,t] for t in 1:nb_br for j in 1:p))
         else
-            @objective(md,Min,sum(L[t] for t in 1:nb_lf) / L_h + alpha*sum(d[t] for t in 1:nb_br))
+            @objective(md,Min,sum(L[t] for t in 1:nb_lf) + L_h*alpha*sum(d[t] for t in 1:nb_br))
         end
     else
         println("Error : neither C nor alpha defined")
         return 0
     end
 
-    # JuMP.write_to_file(md, "output_lp.lp")
+    JuMP.write_to_file(md, "output_lp.lp")
 
     if warm_start.D != 0
         println("Entering the warm start values")
@@ -196,22 +192,22 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
         end
 
         for t in 1:nb_br
-            s = 0
+            sum = 0
             set_start_value(b[t],warm_start.b[t])
-            s += abs(warm_start.b[t])
+            sum += abs(warm_start.b[t])
             for j in 1:p
                 set_start_value(a[j,t],warm_start.a[j,t])
                 if multi_V
                     set_start_value(a_h[j,t],abs(warm_start.a[j,t]))
                     if abs(warm_start.a[j,t]) > 0
                         set_start_value(s[j,t], 1)
-                        s += 1
+                        sum += 1
                     else
                         set_start_value(s[j,t], 0)
                     end
                 end
             end
-            if s>0
+            if sum>0
                 set_start_value(d[t],1)
             else
                 set_start_value(d[t],0)
@@ -228,7 +224,7 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
             end
         end
 
-        leaf = predict_leaf(warm_start,x)
+        leaf = predict_leaf(warm_start,x,mu)
         current_N = zeros(Int64,nb_lf)
         current_Nk = zeros(Int64,K,nb_lf)
         current_l = zeros(Int64,nb_br)
@@ -256,12 +252,12 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
         for t in 1:nb_lf
             set_start_value(N[t], current_N[t])
             for k in 1:K
-                set_start_value(Nk[k,t], current_N[k,t])
+                set_start_value(Nk[k,t], current_Nk[k,t])
             end
         end
 
         for t in 1:nb_lf # as mentionned before, that should not be a problem if warm start was designed with x and y
-            set_start_value(L[t],N[t] - Nk[warm_start.c[t],t])
+            set_start_value(L[t],current_N[t] - current_Nk[warm_start.c[t],t])
         end
 
     end
@@ -270,18 +266,12 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
 
     optimize!(md)
 
-    gap=0
-
-    if termination_status(md) != MOI.OPTIMAL
-        gap=abs(JuMP.objective_bound(md) - JuMP.objective_value(md)) / JuMP.objective_value(md)
-    end
-
     class =  mapslices(argmax,value.(c),dims=1)[:] # it should give us the indexes such that c[:,t] is equal to 1
 
-    return(Tree(D,value.(a),value.(b),class),objective_value(md),gap)
+    return(Tree(D,value.(a),value.(b),class),objective_value(md))
 end
 
-function oct_quad(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64,alpha::Float64=0.0,C::Int64=0,multi_V::Bool=false,warm_start::Tree=null_Tree())
+function oct_quad(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64,alpha::Float64=0.0,C::Int64=0,multi_V::Bool=false,mu::Float64=10^(-7),warm_start::Tree=null_Tree())
     n = length(y)
     p = length(x[1,:])
 
@@ -299,27 +289,6 @@ function oct_quad(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::
     Y = zeros(Int64,n,K)
     for i in 1:n
         Y[i,y[i]] = 1
-    end
-
-    # computation of the vector epsilon and constant epsilon_max
-    if multi_V
-        mu = 0.005
-    else
-        eps = ones(Float64,p)
-        eps_max = 0
-        eps_min = Inf
-        for j in 1:p
-            for i in 1:n
-                for i_ in i+1:n
-                    dif = abs(x[i,j]-x[i_,j])
-                    if dif > 0
-                        eps[j] = min(eps[j],dif)
-                    end
-                end
-            end
-            eps_max = max(eps_max,eps[j])
-            eps_min = min(eps_min,eps[j])
-        end
     end
 
     md = Model(() -> Gurobi.Optimizer(GRB_ENV))
@@ -383,7 +352,7 @@ function oct_quad(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::
         @constraint(md, [t in 1:nb_br, j in 1:p], b[t] <= d[t])
     
     else
-        @constraint(md, [t in 1:nb_br, i in 1:n], z[i,t*2] * (sum(a[j,t]*x[i,j] + esp[j] for j in 1:p) - b[t]) <= 0)
+        @constraint(md, [t in 1:nb_br, i in 1:n], z[i,t*2] * (sum(a[j,t]*x[i,j] for j in 1:p) - b[t] + mu) <= 0)
         @constraint(md, [t in 1:nb_br, i in 1:n], z[i,t*2+1] * (sum(a[j,t]*x[i,j] for j in 1:p) - b[t]) >= 0)
 
         @constraint(md,[t in 1:nb_br], sum(a[j,t] for j in 1:p) == d[t])

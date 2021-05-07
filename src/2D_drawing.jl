@@ -1,13 +1,7 @@
 using Plots
-using Polynomials
 
-"""
-Draws the data points
-Arguments :\n 
-    - x and y : data
-    - K : number of classes
-"""
-function draw_data_points(x::Array{Float64,2},y::Array{Int,1},K::Int64,p::Int64=1,cross_product::Bool=false)
+
+function draw_data_points(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,mu::Float64,black::Bool=false,p::Int64=1,cross_product::Bool=false)
     col = ["blue","green","orange","yellow","red","pink"]
     P = length(x[1,:])
     n = length(x[:,1])
@@ -18,22 +12,50 @@ function draw_data_points(x::Array{Float64,2},y::Array{Int,1},K::Int64,p::Int64=
         p = convert(Int64, round(P/p, digits=0))
     end
 
-    Count = zeros(Int64,K)
+    Count_in = zeros(Int64,K)
+    Count_out = zeros(Int64,K)
+    predictions = predict_class(T,x,mu)
     for i in 1:n
-        Count[y[i]] += 1
+        if predictions[i] == y[i]
+            Count_in[y[i]] += 1
+        else
+            Count_out[y[i]] += 1
+        end
     end
 
     for k in 1:K
-        new_X = zeros(Float64,Count[k],2)
-        fill = 1
-        for i in 1:n
-            if y[i] == k
-                new_X[fill,1] = x[i,1]
-                new_X[fill,2] = x[i,2]
-                fill += 1
+        if Count_in[k] != 0
+            X_in = zeros(Float64,Count_in[k],2)
+            fill = 1
+            for i in 1:n
+                if y[i] == k && predictions[i] == k
+                    X_in[fill,1] = x[i,1]
+                    X_in[fill,2] = x[i,2]
+                    fill += 1
+                end
+            end
+            if black 
+                display(plot!(X_in[:,1],X_in[:,2],seriestype = :scatter,label="",markercolor="black"))
+            else
+                display(plot!(X_in[:,1],X_in[:,2],seriestype = :scatter,label="",markercolor=col[k]))
             end
         end
-        display(plot!(new_X[:,1],new_X[:,2],seriestype = :scatter,label="",markercolor=col[k]))
+        if Count_out[k] != 0
+            X_out = zeros(Float64,Count_out[k],2)
+            fill = 1
+            for i in 1:n
+                if y[i] == k && predictions[i] != k
+                    X_out[fill,1] = x[i,1]
+                    X_out[fill,2] = x[i,2]
+                    fill += 1
+                end
+            end
+            if black
+                display(plot!(X_out[:,1],X_out[:,2],seriestype = :scatter,label="",markercolor="black",markershape=:square))
+            else
+                display(plot!(X_out[:,1],X_out[:,2],seriestype = :scatter,label="",markercolor=col[k],markershape=:square))
+            end
+        end
     end
 end 
 
@@ -43,7 +65,7 @@ Arguments :\n
     - x and y : data
     - K : number of classes
 """
-function draw_class_regions(T::Tree,K::Int64,pow::Int64=1,cross_product::Bool=false)
+function draw_class_regions(T::Tree,K::Int64,mu::Float64,pow::Int64=1,cross_product::Bool=false)
     col = ["blue","green","orange","yellow","red","pink"]
     pix = 400
     x = zeros(Float64,pix^2,2)
@@ -64,7 +86,7 @@ function draw_class_regions(T::Tree,K::Int64,pow::Int64=1,cross_product::Bool=fa
         x = add_cross_product(x)
     end
 
-    y = predict_class(T,x)
+    y = predict_class(T,x,mu)
 
     P = length(x[1,:])
     n = length(x[:,1])
@@ -93,9 +115,9 @@ function draw_class_regions(T::Tree,K::Int64,pow::Int64=1,cross_product::Bool=fa
     end
 end
 
-function draw_leaves_regions(T::Tree,pow::Int64=1,cross_product::Bool=false)
+function draw_leaves_regions(T::Tree,mu::Float64,pow::Int64=1,cross_product::Bool=false)
     col = ["blue","green","orange","yellow","red","pink","purple","cyan"]
-    pix = 500
+    pix = 400
     x = zeros(Float64,pix^2,2)
     for i in 1:pix
         for j in 1:pix
@@ -114,7 +136,7 @@ function draw_leaves_regions(T::Tree,pow::Int64=1,cross_product::Bool=false)
         x = add_cross_product(x)
     end
 
-    y = predict_leaf(T,x)
+    y = predict_leaf(T,x,mu)
 
     P = length(x[1,:])
     n = length(x[:,1])
@@ -143,12 +165,12 @@ function draw_leaves_regions(T::Tree,pow::Int64=1,cross_product::Bool=false)
     end
 end
 
-function draw_class(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,p::Int64=1,cross_product::Bool=false)
-    draw_class_regions(T,K,p,cross_product)
-    draw_data_points(x,y,K,p,cross_product)
+function draw_class(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,mu::Float64,p::Int64=1,cross_product::Bool=false)
+    draw_class_regions(T,K,p,cross_product,mu)
+    draw_data_points(x,y,T,K,false,mu,p,cross_product)
 end
 
 function draw_leaves(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,p::Int64=1,cross_product::Bool=false)
-    draw_leaves_regions(T,p,cross_product)
-    draw_data_points(x,y,K,p,cross_product)
+    draw_leaves_regions(T,mu,p,cross_product)
+    draw_data_points(x,y,T,K,mu,true,p,cross_product)
 end
