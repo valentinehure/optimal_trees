@@ -29,6 +29,173 @@ def write(X,Y,K,name):
         f.write("K = "+str(K))
 
 ############
+def read_wine():
+    y = []
+    x = []
+    with open("../data/unformatted/wine.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            y.append(int(l[0]))
+            commas = [1]
+            for i in range(2,len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            commas.append(len(l)-1)
+            x.append([])
+            for i in range(len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if "." in string:
+                    x[-1].append(float(string))
+                else:
+                    x[-1].append(int(string))
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,3,"wine.txt")
+            
+def read_blood_donation():
+    y = []
+    x = []
+    with open("../data/unformatted/transfusion.data", 'r') as f:
+        l = f.readline()
+        l = f.readline()
+        while len(l) > 0:
+            commas = []
+            for i in range(len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            commas.append(len(l)-1)
+            x.append([])
+            for i in range(len(commas)-1):
+                x[-1].append(float(l[commas[i]+1:commas[i+1]]))
+                if i == len(commas)-2:
+                    y.append(int(l[commas[i]+1:commas[i+1]])+1)
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,2,"blood_donation.txt")
+    
+def read_breast_cancer():
+    y = []
+    x = []
+    with open("../data/unformatted/breast-cancer-wisconsin.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            commas = []
+            for i in range(len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            commas.append(len(l)-1)
+            x.append([])
+            missing = False
+            for i in range(1,len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+                    if i == len(commas)-2:
+                        y.append(int(string)//2)
+            if missing:
+                x.pop()
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,2,"breast_cancer.txt")
+    
+def read_dermatology():
+    y = []
+    x = []
+    with open("../data/unformatted/dermatology.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            commas = []
+            for i in range(len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            commas.append(len(l)-1)
+            x.append([])
+            missing = False
+            for i in range(len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+                    if i == len(commas)-2:
+                        y.append(int(string))
+            if missing:
+                x.pop()
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,6,"dermatology.txt")
+    
+def read_german():
+    y = []
+    x = []
+    with open("../data/unformatted/german-num.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            spaces = []
+            space_before = False
+            for i in range(len(l)):
+                if l[i] == " " and not space_before:
+                    spaces.append(i)
+                    space_before = True
+                elif l[i] != " ":
+                    space_before = False
+                else:
+                    space_before = True
+            spaces.pop()
+            spaces.append(len(l)-1)
+            x.append([])
+            missing = False
+            for i in range(len(spaces)-1):
+                string = l[spaces[i]+1:spaces[i+1]]
+                print("#########",string,"##############/n")
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+                    if i == len(spaces)-2:
+                        y.append(int(string))
+            if missing:
+                x.pop()
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,6,"german.txt")
+        
+############
 import matplotlib.pyplot as plt
 # col = ['royalblue','limegreen','gold','orange','red','hotpink']
 
@@ -82,12 +249,12 @@ def draw_circle(cx,cy,r):
   
     plt.plot( a, b, color = 'black')
 
-plt.close()
+# plt.close()
 # X,Y = creation_cercle(30,0.5,0.5,0.3)
 # draw_circle(0.5,0.5,0.3)
 # visu_2D(X,Y,2)
 
 
-for i in range(1,6):
-    X,Y = creation_dataset(20,4,4)
-    write(X,Y,4,"small_tests/rd_dataset_20_4_4_"+str(i)+".txt")
+#for i in range(1,6):
+#    X,Y = creation_dataset(20,4,4)
+#    write(X,Y,4,"small_tests/rd_dataset_20_4_4_"+str(i)+".txt")

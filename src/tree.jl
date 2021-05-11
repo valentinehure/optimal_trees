@@ -6,7 +6,7 @@ mutable struct Tree
     a::Array{Float64,2}
     b::Array{Float64,1}
     c::Array{Int64,1}
-
+    
     function Tree()
         return new()
     end
@@ -30,7 +30,7 @@ function Tree(D::Int64,a::Array{Float64,2},b::Array{Float64,1},c::Array{Int64,1}
 end
 
 """
-Create a Tree with depth=0 used when there is no warm-up in the algorithm
+Creation of a Tree with depth=0 used when there is no warm-up in the algorithm
 """
 function null_Tree()
     this=Tree()
@@ -41,6 +41,10 @@ function null_Tree()
     return(this)
 end
 
+
+"""
+Creation of a Tree of greater dimension but with the same structure
+"""
 function bigger_Tree(T::Tree, new_D::Int64)
     p = length(T.a[:,1])
     a = ones(Float64,p,2^new_D-1)
@@ -66,10 +70,15 @@ function bigger_Tree(T::Tree, new_D::Int64)
         c[t*(2^dif)] = T.c[t] # only the righest leave will carry the label (others' label do not matter)
     end
 
-    return Tree(new_D,a,b,c)
+    return Tree(new_D,a,b,c,T)
 end
 
-function predict_leaf(T::Tree, x::Array{Float64,2},mu::Float64)
+"""
+Prediction of the class given:\n
+    - x : vectors of caracteristics
+    - T : a tree
+"""
+function predict_leaf(T::Tree, x::Array{Float64,2})
     n = length(x[:,1])
     p = length(x[1,:])
     leaf = zeros(Int64,n)
@@ -77,7 +86,7 @@ function predict_leaf(T::Tree, x::Array{Float64,2},mu::Float64)
     for i in 1:n
         t = 1
         for d in 1:T.D
-            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= mu
+            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
                 t = t*2
             else
                 t = t*2 + 1
@@ -88,7 +97,12 @@ function predict_leaf(T::Tree, x::Array{Float64,2},mu::Float64)
     return leaf
 end
 
-function predict_class(T::Tree, x::Array{Float64,2}, mu::Float64)
+"""
+Prediction of the leaf given:\n
+    - x : vectors of caracteristics
+    - T : a tree
+"""
+function predict_class(T::Tree, x::Array{Float64,2})
     n = length(x[:,1])
     p = length(x[1,:])
     class = zeros(Int64,n)
@@ -96,7 +110,7 @@ function predict_class(T::Tree, x::Array{Float64,2}, mu::Float64)
     for i in 1:n
         t = 1
         for d in 1:T.D
-            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= mu
+            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
                 t = t*2
             else
                 t = t*2 + 1

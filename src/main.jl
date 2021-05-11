@@ -1,19 +1,21 @@
 include("tests.jl")
-include("2D_drawing.jl")
+# include("2D_drawing.jl")
 
-include("../data/small_random_tests/rd_dataset_20_2_4_1.txt")
+# include("../data/ecoli.txt")
 
-#X = add_cross_product_and_powers(X,4)
 # X = add_powers(X,2)
+# T,obj,time,nodes = oct_quad(2,0,X,Y,K,0.0,20,true,10^(-4),false)
+# T,obj,time,nodes = flow_adapted_quad(2,X,Y,K,0.0,true,10^(-4),false)
+# println(T, obj)
 
+# draw_class(X,Y,T,K,2)
 
-# T,obj = oct(2,X,Y,K,0.0,20)
-T,obj = flow_adapted(3,X,Y,K,0.0,true,10^(-7),0.0)
-# T,obj = main_problem(2,X,Y,K,0.0,true,0.005,0.01)
+# iris_test(5)
+# iris_test(3)
 
-draw_class(X,Y,T,K)
-#draw_leaves(X,Y,T,K,2)
+# cplex_vs_gurobi()
 
-# small_tests()
-#epsilon_pb()
-
+test("../data/ecoli.txt","ecoli")
+test("../data/wine.txt","wine")
+test("../data/blood_donation.txt","blood_donation")
+test("../data/breast_cancer.txt","breast_cancer")

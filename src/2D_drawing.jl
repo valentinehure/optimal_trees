@@ -1,7 +1,7 @@
+include("tree.jl")
 using Plots
 
-
-function draw_data_points(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,mu::Float64,black::Bool=false,p::Int64=1,cross_product::Bool=false)
+function draw_data_points(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,black::Bool=false,p::Int64=1,cross_product::Bool=false)
     col = ["blue","green","orange","yellow","red","pink"]
     P = length(x[1,:])
     n = length(x[:,1])
@@ -14,7 +14,7 @@ function draw_data_points(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,m
 
     Count_in = zeros(Int64,K)
     Count_out = zeros(Int64,K)
-    predictions = predict_class(T,x,mu)
+    predictions = predict_class(T,x)
     for i in 1:n
         if predictions[i] == y[i]
             Count_in[y[i]] += 1
@@ -65,7 +65,7 @@ Arguments :\n
     - x and y : data
     - K : number of classes
 """
-function draw_class_regions(T::Tree,K::Int64,mu::Float64,pow::Int64=1,cross_product::Bool=false)
+function draw_class_regions(T::Tree,K::Int64,pow::Int64=1,cross_product::Bool=false)
     col = ["blue","green","orange","yellow","red","pink"]
     pix = 400
     x = zeros(Float64,pix^2,2)
@@ -86,36 +86,40 @@ function draw_class_regions(T::Tree,K::Int64,mu::Float64,pow::Int64=1,cross_prod
         x = add_cross_product(x)
     end
 
-    y = predict_class(T,x,mu)
+    y = predict_class(T,x)
 
     P = length(x[1,:])
     n = length(x[:,1])
 
     Count = zeros(Int64,K)
     for i in 1:n
-        Count[y[i]] += 1
+        if y[i] != 0
+            Count[y[i]] += 1
+        end
     end
 
     for k in 1:K
-        new_X = zeros(Float64,Count[k],2)
-        fill = 1
-        for i in 1:n
-            if y[i] == k
-                new_X[fill,1] = x[i,1]
-                new_X[fill,2] = x[i,2]
-                fill += 1
+        if Count[k] > 0
+            new_X = zeros(Float64,Count[k],2)
+            fill = 1
+            for i in 1:n
+                if y[i] == k
+                    new_X[fill,1] = x[i,1]
+                    new_X[fill,2] = x[i,2]
+                    fill += 1
+                end
             end
-        end
 
-        if k==1
-            display(plot(new_X[:,1],new_X[:,2],seriestype = :scatter,label="classe 1",markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
-        else
-            display(plot!(new_X[:,1],new_X[:,2],seriestype = :scatter,label=string("classe ",k),markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+            if k==1
+                display(plot(new_X[:,1],new_X[:,2],seriestype = :scatter,label="classe 1",markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+            else
+                display(plot!(new_X[:,1],new_X[:,2],seriestype = :scatter,label=string("classe ",k),markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+            end
         end
     end
 end
 
-function draw_leaves_regions(T::Tree,mu::Float64,pow::Int64=1,cross_product::Bool=false)
+function draw_leaves_regions(T::Tree,pow::Int64=1,cross_product::Bool=false)
     col = ["blue","green","orange","yellow","red","pink","purple","cyan"]
     pix = 400
     x = zeros(Float64,pix^2,2)
@@ -136,14 +140,16 @@ function draw_leaves_regions(T::Tree,mu::Float64,pow::Int64=1,cross_product::Boo
         x = add_cross_product(x)
     end
 
-    y = predict_leaf(T,x,mu)
+    y = predict_leaf(T,x)
 
     P = length(x[1,:])
     n = length(x[:,1])
 
     Count = zeros(Int64,2^T.D)
     for i in 1:n
-        Count[y[i]] += 1
+        if y[i] > 0
+            Count[y[i]] += 1
+        end
     end
 
     for l in 1:(2^T.D)
@@ -165,12 +171,12 @@ function draw_leaves_regions(T::Tree,mu::Float64,pow::Int64=1,cross_product::Boo
     end
 end
 
-function draw_class(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,mu::Float64,p::Int64=1,cross_product::Bool=false)
-    draw_class_regions(T,K,p,cross_product,mu)
-    draw_data_points(x,y,T,K,false,mu,p,cross_product)
+function draw_class(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,p::Int64=1,cross_product::Bool=false)
+    draw_class_regions(T,K,p,cross_product)
+    draw_data_points(x,y,T,K,false,p,cross_product)
 end
 
 function draw_leaves(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,p::Int64=1,cross_product::Bool=false)
-    draw_leaves_regions(T,mu,p,cross_product)
-    draw_data_points(x,y,T,K,mu,true,p,cross_product)
+    draw_leaves_regions(T,p,cross_product)
+    draw_data_points(x,y,T,K,true,p,cross_product)
 end
