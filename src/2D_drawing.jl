@@ -2,7 +2,9 @@ include("tree.jl")
 using Plots
 
 function draw_data_points(x::Array{Float64,2},y::Array{Int,1},T::Tree,K::Int64,black::Bool=false,p::Int64=1,cross_product::Bool=false)
-    col = ["blue","green","orange","yellow","red","pink"]
+    # col = ["goldenrod1","cornflowerblue"]
+    # col = ["skyblue2","blue","gold","darkorange"]
+    col = ["blue","green","orange","yellow","red","pink","purple","cyan"]
     P = length(x[1,:])
     n = length(x[:,1])
     if cross_product
@@ -66,7 +68,9 @@ Arguments :\n
     - K : number of classes
 """
 function draw_class_regions(T::Tree,K::Int64,pow::Int64=1,cross_product::Bool=false)
-    col = ["blue","green","orange","yellow","red","pink"]
+    # col = ["goldenrod1","cornflowerblue"]
+    # col = ["skyblue2","blue","gold","darkorange"]
+    col = ["blue","green","orange","yellow","red","pink","purple","cyan"]
     pix = 400
     x = zeros(Float64,pix^2,2)
     for i in 1:pix
@@ -101,19 +105,21 @@ function draw_class_regions(T::Tree,K::Int64,pow::Int64=1,cross_product::Bool=fa
     for k in 1:K
         if Count[k] > 0
             new_X = zeros(Float64,Count[k],2)
-            fill = 1
+            fil = 1
             for i in 1:n
                 if y[i] == k
-                    new_X[fill,1] = x[i,1]
-                    new_X[fill,2] = x[i,2]
-                    fill += 1
+                    new_X[fil,1] = x[i,1]
+                    new_X[fil,2] = x[i,2]
+                    fil += 1
                 end
             end
 
             if k==1
-                display(plot(new_X[:,1],new_X[:,2],seriestype = :scatter,label="classe 1",markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+                display(plot(new_X[:,1],new_X[:,2],seriestype = :scatter,label = "",markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+                #display(plot(new_X[:,1],new_X[:,2],seriestype = :scatter,label="classe 1",markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
             else
-                display(plot!(new_X[:,1],new_X[:,2],seriestype = :scatter,label=string("classe ",k),markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+                display(plot!(new_X[:,1],new_X[:,2],seriestype = :scatter,label = "",markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
+                #display(plot!(new_X[:,1],new_X[:,2],seriestype = :scatter,label=string("classe ",k),markersize=1,markercolor=col[k],markerstrokecolor=col[k],markershape=:square))
             end
         end
     end
@@ -154,12 +160,12 @@ function draw_leaves_regions(T::Tree,pow::Int64=1,cross_product::Bool=false)
 
     for l in 1:(2^T.D)
         new_X = zeros(Float64,Count[l],2)
-        fill = 1
+        fil = 1
         for i in 1:n
             if y[i] == l
-                new_X[fill,1] = x[i,1]
-                new_X[fill,2] = x[i,2]
-                fill += 1
+                new_X[fil,1] = x[i,1]
+                new_X[fil,2] = x[i,2]
+                fil += 1
             end
         end
 

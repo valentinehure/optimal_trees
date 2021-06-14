@@ -57,6 +57,35 @@ def read_wine():
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
     write(x,y,3,"wine.txt")
+
+def give_wine():
+    y = []
+    x = []
+    with open("../data/unformatted/wine.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            y.append(int(l[0]))
+            commas = [1]
+            for i in range(2,len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            commas.append(len(l)-1)
+            x.append([])
+            for i in range(len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if "." in string:
+                    x[-1].append(float(string))
+                else:
+                    x[-1].append(int(string))
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    return(x,y)
             
 def read_blood_donation():
     y = []
@@ -84,6 +113,7 @@ def read_blood_donation():
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
     write(x,y,2,"blood_donation.txt")
+
     
 def read_breast_cancer():
     y = []
@@ -118,6 +148,40 @@ def read_breast_cancer():
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
     write(x,y,2,"breast_cancer.txt")
+    
+def read_haberman():
+    y = []
+    x = []
+    with open("../data/unformatted/haberman.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            commas = []
+            for i in range(len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            commas.append(len(l)-1)
+            x.append([])
+            missing = False
+            for i in range(len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+                    if i == len(commas)-2:
+                        y.append(int(string))
+            if missing:
+                x.pop()
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,2,"haberman.txt")
     
 def read_dermatology():
     y = []
@@ -175,7 +239,6 @@ def read_german():
             missing = False
             for i in range(len(spaces)-1):
                 string = l[spaces[i]+1:spaces[i+1]]
-                print("#########",string,"##############/n")
                 if string == "?":
                     missing = True
                     break
@@ -194,9 +257,44 @@ def read_german():
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
     write(x,y,6,"german.txt")
-        
+
+def read_seeds():
+    y = []
+    x = []
+    with open("../data/unformatted/seeds_dataset.txt", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            spaces = []
+            for i in range(len(l)):
+                if l[i] == "\t":
+                    spaces.append(i)
+            spaces.append(len(l)-1)
+            x.append([])
+            missing = False
+            for i in range(len(spaces)-1):
+                string = l[spaces[i]+1:spaces[i+1]]
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+                    if i == len(spaces)-2:
+                        y.append(int(string))
+            if missing:
+                x.pop()
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    write(x,y,3,"seeds.txt")
+
 ############
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 # col = ['royalblue','limegreen','gold','orange','red','hotpink']
 
 def creation_dataset(n,p,K):
@@ -227,13 +325,20 @@ def visu_2D(X,Y,K):
 # X,Y = creation_dataset(20,2,4)
 # visu_2D(X,Y,4)
 
-def creation_cercle(n,cx,cy,r):
+def creation_cercle(n,cx,cy,r,epsilon):
     X = np.zeros((n,2))
     Y = []
     for i in range(n):
-        x = rd.random()
-        y = rd.random()
-        if np.sqrt((cx-x)**2+(cy-y)**2) > r:
+        hors_frontiere = False
+        x = 0
+        y = 0
+        dist = 0
+        while not hors_frontiere :
+            x = rd.random()
+            y = rd.random()
+            dist = np.sqrt((cx-x)**2+(cy-y)**2)
+            hors_frontiere = dist < r - epsilon or dist > r + epsilon
+        if dist > r:
             Y.append(2)
         else:
             Y.append(1)
@@ -249,12 +354,7 @@ def draw_circle(cx,cy,r):
   
     plt.plot( a, b, color = 'black')
 
-# plt.close()
-# X,Y = creation_cercle(30,0.5,0.5,0.3)
-# draw_circle(0.5,0.5,0.3)
-# visu_2D(X,Y,2)
-
-
-#for i in range(1,6):
-#    X,Y = creation_dataset(20,4,4)
-#    write(X,Y,4,"small_tests/rd_dataset_20_4_4_"+str(i)+".txt")
+plt.close()
+X,Y = creation_cercle(200,0.5,0.5,0.3,0.01)
+draw_circle(0.5,0.5,0.3)
+visu_2D(X,Y,2)

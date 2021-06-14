@@ -70,7 +70,7 @@ end
 """
 Returns P lists of indexes partioning data such that in each partition each class is as represented as in the original dataset
 """
-function partitioning(X::Array{Float64,2},Y::Array{Int64,1},K::Int64,P::Int64)
+function partitioning(Y::Array{Int64,1},K::Int64,P::Int64)
     n = length(Y)
 
     indexes = Array{Int64}[]
@@ -98,6 +98,54 @@ function partitioning(X::Array{Float64,2},Y::Array{Int64,1},K::Int64,P::Int64)
     end
 
     return indexes
-
 end
-  
+
+
+"""
+Returns P lists of indexes partioning data such that in each partition each class is as represented as in the original dataset
+"""
+function cross_validation_partitioning(Y::Array{Int64,1},K::Int64,P::Int64)
+    n = length(Y)
+
+    train_indexes = Array{Int64}[]
+    for p in 1:P
+        push!(train_indexes,[])
+    end
+
+    test_indexes = Array{Int64}[]
+    for p in 1:P
+        push!(test_indexes,[])
+    end
+
+    cpt = 1
+    for k in 1:K
+        class_index = []
+        for i in 1:n
+            if Y[i] == k
+                push!(class_index,i)
+            end
+        end
+        class_index = hcat(class_index)
+        rd = randperm(length(class_index))
+        for i in 1:length(class_index)
+            push!(test_indexes[cpt],class_index[rd[i]])
+            cpt += 1
+            if cpt > P
+                cpt = 1
+            end
+            for it in 2:P
+                push!(train_indexes[cpt],class_index[rd[i]])
+                cpt += 1
+                if cpt > P
+                    cpt = 1
+                end
+            end
+            cpt += 1
+            if cpt > P
+                cpt = 1
+            end
+        end  
+    end
+
+    return train_indexes, test_indexes
+end
