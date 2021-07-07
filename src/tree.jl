@@ -6,6 +6,7 @@ mutable struct Tree
     a::Array{Float64,2}
     b::Array{Float64,1}
     c::Array{Int64,1}
+    eps::Array{Float64,1}
     
     function Tree()
         return new()
@@ -17,15 +18,16 @@ end
 Creation of a tree\n
 Arguments :\n
     - D : maximum depth
-    - a and b : values of the branching rules (that are a.x <= b)
+    - a, b and eps : values of the branching rules (that are a.x <= b - eps and a.x + eps > b + eps)
     - c : leaves' labels (even if the leave cant be attained, it will be labelled, by default we will try to label those as 0)
 """
-function Tree(D::Int64,a::Array{Float64,2},b::Array{Float64,1},c::Array{Int64,1})
+function Tree(D::Int64,a::Array{Float64,2},b::Array{Float64,1},c::Array{Int64,1};eps::Array{Float64,1}=Float64[])
     this=Tree()
     this.D=D
     this.a=a
     this.b=b
     this.c=c
+    this.eps=eps
     return(this)
 end
 
@@ -38,6 +40,7 @@ function null_Tree()
     this.a=zeros(Float64,0,0)
     this.b=zeros(Float64,0)
     this.c=zeros(Int64,0)
+    this.eps=zeros(Float64,0)
     return(this)
 end
 
@@ -47,21 +50,25 @@ Creation of a Tree of greater dimension but with the same structure
 """
 function bigger_Tree(T::Tree, new_D::Int64)
     p = length(T.a[:,1])
-    a = ones(Float64,p,2^new_D-1)
-    b = ones(Float64,2^new_D-1)
+    a = zeros(Float64,p,2^new_D-1)
+    b = zeros(Float64,2^new_D-1)
     c = zeros(Int64,2^new_D)
+
+    if length(T.eps) == 0
+        eps = Float64[]
+        need_eps = false
+    else
+        eps = zeros(Float64,2^new_D-1)
+        need_eps = true
+    end
 
     for t in 1:(2^T.D-1)
         b[t] = T.b[t]
         for j in 1:p
             a[j,t] = T.a[j,t]
         end
-    end
-
-    for t in 2^T.D:(2^new_D-1)
-        b[t] = 0
-        for j in 1:p
-            a[j,t] = 0
+        if need_eps
+            eps[t] = T.eps[t]
         end
     end
 
@@ -70,7 +77,7 @@ function bigger_Tree(T::Tree, new_D::Int64)
         c[t*(2^dif)] = T.c[t] # only the righest leave will carry the label (others' label do not matter)
     end
 
-    return Tree(new_D,a,b,c,T)
+    return Tree(new_D,a,b,c,T,eps=eps)
 end
 
 """
@@ -78,23 +85,27 @@ Prediction of the class given:\n
     - x : vectors of caracteristics
     - T : a tree
 """
-function predict_leaf(T::Tree, x::Array{Float64,2})
-    n = length(x[:,1])
-    p = length(x[1,:])
-    leaf = zeros(Int64,n)
-    
-    for i in 1:n
-        t = 1
-        for d in 1:T.D
-            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
-                t = t*2
-            else
-                t = t*2 + 1
+function predict_leaf(T::Tree, x::Array{Float64,2}; use_eps::Bool=false)
+    if use_eps
+        println("Functionality not available yet\n")
+    else
+        n = length(x[:,1])
+        p = length(x[1,:])
+        leaf = zeros(Int64,n)
+        
+        for i in 1:n
+            t = 1
+            for d in 1:T.D
+                if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
+                    t = t*2
+                else
+                    t = t*2 + 1
+                end
             end
+            leaf[i] = t - (2^T.D - 1)
         end
-        leaf[i] = t - (2^T.D - 1)
+        return leaf
     end
-    return leaf
 end
 
 """
@@ -102,23 +113,27 @@ Prediction of the leaf given:\n
     - x : vectors of caracteristics
     - T : a tree
 """
-function predict_class(T::Tree, x::Array{Float64,2})
-    n = length(x[:,1])
-    p = length(x[1,:])
-    class = zeros(Int64,n)
-    
-    for i in 1:n
-        t = 1
-        for d in 1:T.D
-            if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
-                t = t*2
-            else
-                t = t*2 + 1
+function predict_class(T::Tree, x::Array{Float64,2}; use_eps::Bool=false)
+    if use_eps
+        println("Functionality not available yet\n")
+    else 
+        n = length(x[:,1])
+        p = length(x[1,:])
+        class = zeros(Int64,n)
+        
+        for i in 1:n
+            t = 1
+            for d in 1:T.D
+                if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
+                    t = t*2
+                else
+                    t = t*2 + 1
+                end
             end
+            class[i] = T.c[t - (2^T.D - 1)]
         end
-        class[i] = T.c[t - (2^T.D - 1)]
+        return class
     end
-    return class
 end
 
 """
@@ -135,6 +150,8 @@ function write_tree(T::Tree,filename::String;power::Int64=1,cross_prod::Bool=fal
     write(file, string("ATTRIB = ",nb_attrib,"\n"))
     write(file, string("NODES = \n"))
     cpt = 1
+
+    eps_not_empty = length(T.eps) != 0
     for D in 0:(T.D-1)
         for n in 1:2^D
             str = string(cpt," : a =")
@@ -142,8 +159,18 @@ function write_tree(T::Tree,filename::String;power::Int64=1,cross_prod::Bool=fal
                 str = string(str," ",T.a[a,cpt])
             end
             write(file, string(str,"\n"))
+
             str = string(cpt," : b = ",T.b[cpt],"\n")
             write(file, str)
+            
+            if eps_not_empty
+                str = string(cpt," : eps = ",T.eps[cpt],"\n")
+                write(file,str)
+            else
+                str = string(cpt," : eps = not defined\n")
+                write(file,str)
+            end
+
             cpt += 1
         end
     end
@@ -176,8 +203,9 @@ function read_tree(filename::String)
 
     a = zeros(Float64,nb_attrib,2^D-1)
     b = zeros(Float64,2^D-1)
+    
+    need_eps = false
 
-    cpt = 1
     for cpt in 1:(2^D-1)
         line = readline(file)
         debut = findnext(isequal(' '),line,7) + 1
@@ -188,16 +216,29 @@ function read_tree(filename::String)
         end
         a[nb_attrib,cpt] = parse(Float64,line[debut:length(line)])
         line = readline(file)
-        b[cpt] = parse(Float64,line[9:length(line)])
-        cpt += 1
+        b[cpt] = parse(Float64,line[8+length(string(cpt)):length(line)])
+        line = readline(file)
+        if cpt == 1
+            need_eps = ! (line[11:21] == "not defined")
+            if need_eps
+                eps = zeros(Float64,2^D-1)
+            end
+        end
+        if need_eps
+            eps[cpt] = parse(Float64,line[10+length(string(cpt)):length(line)])
+        end
+    end
+    if !need_eps
+        eps = Float64[]
     end
     line = readline(file)
 
     c = zeros(Int64,2^D)
-    for l in 1:(2^T.D)
+    for l in 1:(2^D)
         line = readline(file)
         c[l] = parse(Int64,line[5:length(line)])
     end
+    close(file)
 
-    return Tree(D,a,b,c), power, cross_prod
+    return Tree(D,a,b,c;eps=eps), power, cross_prod
 end

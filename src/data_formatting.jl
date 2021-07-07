@@ -149,3 +149,59 @@ function cross_validation_partitioning(Y::Array{Int64,1},K::Int64,P::Int64)
 
     return train_indexes, test_indexes
 end
+
+function double_test_partitionning(Y::Array{Int64,1},K::Int64,P::Int64)
+    n = length(Y)
+
+    train_indexes = Array{Int64}[]
+    for p in 1:P
+        push!(train_indexes,[])
+    end
+
+    test_1_indexes = Array{Int64}[]
+    for p in 1:P
+        push!(test_1_indexes,[])
+    end
+
+    test_2_indexes = Array{Int64}[]
+    for p in 1:P
+        push!(test_2_indexes,[])
+    end
+
+    cpt = 1
+    for k in 1:K
+        class_index = []
+        for i in 1:n
+            if Y[i] == k
+                push!(class_index,i)
+            end
+        end
+        class_index = hcat(class_index)
+        rd = randperm(length(class_index))
+        for i in 1:length(class_index)
+            push!(test_1_indexes[cpt],class_index[rd[i]])
+            cpt += 1
+            if cpt > P
+                cpt = 1
+            end
+            push!(test_2_indexes[cpt],class_index[rd[i]])
+            cpt += 1
+            if cpt > P
+                cpt = 1
+            end
+            for it in 3:P
+                push!(train_indexes[cpt],class_index[rd[i]])
+                cpt += 1
+                if cpt > P
+                    cpt = 1
+                end
+            end
+            cpt += 1
+            if cpt > P
+                cpt = 1
+            end
+        end  
+    end
+
+    return train_indexes, test_1_indexes, test_2_indexes
+end

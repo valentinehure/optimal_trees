@@ -4,6 +4,7 @@ from scipy.spatial import ConvexHull
 from sklearn import datasets
 from numpy.linalg import norm
 from quadprog import solve_qp
+from scipy.spatial.qhull import QhullError
 
 ## https://towardsdatascience.com/clustering-using-convex-hulls-fddafeaa963c
 
@@ -27,42 +28,70 @@ def proj2hull(z, equations):
     x, f, xu, itr, lag, act = solve_qp(G, a, C.T, b, meq=0, factorized=True)
     return np.linalg.norm(z-x)
             
-def proj2smallensemble_rec(P,X):
-    N = len(X)
-    n = len(P)
-    if N == 1:
-        return(X[0], np.linalg.norm(P - X[0]))  
-    else:    
-        M = np.zeros((n + N - 1, n + N - 1))
-        V = np.zeros((n + N - 1, 1))
-        
-        for i in range(n):
-            M[i,i] = 1
-            for j in range(N-1):
-                M[i,n+j] = X[0][i] - X[j+1][i]
-                M[n+j,i] = X[j+1][i] - X[0][i]
-                V[n+j,0] += P[i]*(X[j+1][i] - X[0][i])
-            V[i,0] = X[0][i]
-            
-        M = np.linalg.inv(M)
-        result = np.dot(M,V)
-        H = result[:n,:]
-        H = H.transpose()
-        lambd = result[n:,:][0].tolist()
-        
-        if sum(lambd)>1 or min(lambd) < 0:
-            dist = np.inf
-            Hprime = 0
-            for j in range(N):
-                new_Hprime, new_dist = proj2smallensemble_rec(H,[X[i] for i in range(N) if i!=j])
-                if new_dist < dist:
-                    dist = new_dist
-                    Hprime = new_Hprime
-            return(Hprime, dist)
-        else:
-            return(H, np.linalg.norm(P - H))
+def test_proj():
+    mat = np.zeros((100,100))
+    X = [np.array([20,20]),np.array([70,30]),np.array([30,50])]
 
-def proj2smallensemble(P,X):    
+    
+    for i in range(100):
+        for j in range(100):
+            P = np.array([i,j])
+            mat[i,j] = proj2smallensemble(P,X)
+
+    plt.imshow(mat)
+    
+def proj2smallensemble(P,X):
+    
+    def proj2smallensemble_rec(P,X):
+        N = len(X)
+        n = len(P)
+        if N == 1:
+            return(X[0], np.linalg.norm(P - X[0]))  
+        else:    
+            dim = np.linalg.matrix_rank(np.array(X))
+            
+            proper_dim = dim >= N - 1
+            
+            if proper_dim :
+                M = np.zeros((n + N - 1, n + N - 1))
+                V = np.zeros((n + N - 1, 1))
+                
+                for i in range(n):
+                    M[i,i] = 1
+                    for j in range(N-1):
+                        M[i,n+j] = X[0][i] - X[j+1][i]
+                        M[n+j,i] = X[j+1][i] - X[0][i]
+                        V[n+j,0] += P[i]*(X[j+1][i] - X[0][i])
+                    V[i,0] = X[0][i]
+                    
+                M = np.linalg.inv(M)
+                result = np.dot(M,V)
+                H = result[:n,:]
+                H = H.transpose()[:,0]
+                lambd = result[n:,:][0].tolist()
+            
+                if sum(lambd)>1 or min(lambd) < 0:
+                    dist = np.inf
+                    Hprime = 0
+                    for j in range(N):
+                        new_Hprime, new_dist = proj2smallensemble_rec(H,[X[i] for i in range(N) if i!=j])
+                        if new_dist < dist:
+                            dist = new_dist
+                            Hprime = new_Hprime
+                    return(Hprime, dist)
+                else:
+                    return(H, np.linalg.norm(P - H))
+
+            else :
+                dist = np.inf
+                Hprime = 0
+                for j in range(N):
+                    new_Hprime, new_dist = proj2smallensemble_rec(P,[X[i] for i in range(N) if i!=j])
+                    if new_dist < dist:
+                        dist = new_dist
+                        Hprime = new_Hprime
+                return(Hprime, dist)
+
     H, dist = proj2smallensemble_rec(P,X)
     return np.linalg.norm(P - H)
     
@@ -94,7 +123,122 @@ def remove_identical(X,Y):
             alone_clusters.append([pair[i][1]])
     
     return removal_list,to_be_paired,alone_clusters
+
+def new_make_hulls(X,Y):
+    X = np.array(X)
+    removal_list,to_be_paired,alone_clusters = remove_identical(X,Y)
+
+    X = np.array([X[i,:] for i in range(np.shape(X)[0]) if removal_list.count(i) == 0])
     
+    n = np.shape(X)[1]
+    clusters = alone_clusters
+    
+    nb_pts = len(X[:,0])
+    
+    pts = [i for i in range(len(X[:,0]))]
+    
+    dist = np.zeros((nb_pts,nb_pts))
+    for i in range(nb_pts):
+        dist[i,i] = np.inf
+        for j in range(i+1,nb_pts):
+            dist[i,j] = norm(X[i,:]-X[j,:])
+            dist[j,i] = norm(X[i,:]-X[j,:])
+    
+    keep_going = True
+    while len(pts) > 0 and keep_going:
+        cluster = "nothing"
+        for i in pts :
+            dist_list = np.argsort(dist[i,:])
+            closest = 0
+            while Y[dist_list[closest]] == Y[i]:
+                if pts.count(dist_list[closest]) > 0:
+                    closest_rn = dist_list[closest]
+                    dist_list = np.argsort(dist[closest_rn,:])
+                    other_class_close = False
+                    it = 0
+                    while dist_list[it] != i:
+                        if Y[dist_list[it]] != Y[i]:
+                            other_class_close = True
+                            break
+                        it += 1
+                    if not other_class_close:
+                        if cluster == "nothing":
+                            cluster = [i,closest_rn]
+                        else:
+                            if dist[cluster[0],cluster[1]] > dist[i,closest_rn] :
+                                cluster = [i,closest_rn]
+                closest += 1                
+        
+        if cluster == "nothing":
+            keep_going = False
+        else:
+            pts.pop(pts.index(cluster[0]))
+            pts.pop(pts.index(cluster[1]))
+            cluster_class = Y[cluster[0]]            
+            hull_dist = []
+            for i in range(nb_pts):
+                if cluster.count(i) > 0:
+                    hull_dist.append(np.inf)
+                else:
+                    hull_dist.append(proj2smallensemble(X[i,:],[X[j,:] for j in cluster]))
+            
+            closest_hull = np.argsort(hull_dist)
+            
+            while Y[closest_hull[0]] == cluster_class:
+                point_found = False
+                for it in closest_hull:
+                    if Y[it] != cluster_class:
+                        break
+                    elif pts.count(it) > 0:
+                        dist_list = np.argsort(dist[it,:])
+                        other_class_close = False
+                        cpt = 0
+                        while dist[it,dist_list[cpt]] < hull_dist[it]:
+                            if Y[dist_list[cpt]] != cluster_class:
+                                other_class_close = True
+                                break
+                            cpt += 1
+                        
+                        if not other_class_close :
+                            point_found = True
+                            cluster.append(it)
+                            pts.pop(pts.index(it))
+                
+                if point_found :
+                    hull_dist = []
+                    try : 
+                        hull = ConvexHull([X[i,:] for i in cluster])
+                        for i in range(nb_pts):
+                            if cluster.count(i) > 0:
+                                hull_dist.append(np.inf)
+                            else:
+                                hull_dist.append(proj2hull(X[i,:],hull.equations))
+                    except QhullError :
+                        for i in range(nb_pts):
+                            if cluster.count(i) > 0:
+                                hull_dist.append(np.inf)
+                            else :
+                                hull_dist.append(proj2smallensemble(X[i,:],[X[j,:] for j in cluster]))
+                   
+                            
+                    closest_hull = np.argsort(hull_dist)
+                
+                else:
+                    break
+            
+            clusters.append(cluster)
+        
+    if len(pts)>0:
+        for i in range(len(pts)):
+            clusters.append([pts[i]])
+    
+    for i in range(len(to_be_paired)):
+        for j in range(len(clusters)):
+            if clusters[j].count(to_be_paired[i][0]) > 0:
+                clusters[j].append(to_be_paired[i][1])
+                break
+    return(clusters)
+
 def make_hulls(X,Y):
     X = np.array(X)
     removal_list,to_be_paired,alone_clusters = remove_identical(X,Y)
@@ -180,8 +324,8 @@ def make_hulls(X,Y):
     
     for i in range(len(to_be_paired)):
         for j in range(len(clusters)):
-            if clusters[j].count(to_be_paired[0]) > 0:
-                clusters[j].append(to_be_paired[1])
+            if clusters[j].count(to_be_paired[i][0]) > 0:
+                clusters[j].append(to_be_paired[i][1])
                 break
     return(clusters)
 
@@ -195,6 +339,8 @@ def test(n=30,K=4):
     X = np.random.rand(n, 2)
     Y = [np.random.randint(0,K) for i in range(n)]
     
+    clusters = new_make_hulls(X,Y)
+    plt.close()
     plt.subplot(1,2,1)
     for i in range(K):
         X_1 = []
@@ -206,7 +352,6 @@ def test(n=30,K=4):
         plt.scatter(X_1,X_2,color=color[i])      
     plt.xlim([0,1])
     plt.ylim([0,1])          
-    clusters = make_hulls(X,Y)
     
     plt.subplot(1,2,2)
     for i in range(len(clusters)):
@@ -236,49 +381,50 @@ def iris_make_hull():
         min_i = min(iris[:,i])
         for j in range(np.shape(iris)[0]):
             iris[j,i] = (iris[j,i] - min_i) / (max_i - min_i)
-#    color = ["blue","red","green"]
+    color = ["blue","red","green"]
     
-#    plt.subplot(1,2,1)
+    plt.close()
+    plt.subplot(1,2,1)
 
     X = iris[:, :2]
-    clusters = make_hulls(X,Y)
+    clusters = new_make_hulls(X,Y)
     nb_cl_1 = len(clusters)
     print("Premier fait \n")
-#    for i in range(len(clusters)):
-#        if len(clusters[i]) > 1:
-#            points = np.array([[X[j,0],X[j,1]] for j in clusters[i]])
-#            plt.plot(points[:,0], points[:,1], 'o',color=color[Y[clusters[i][0]]])
-#            if np.linalg.matrix_rank(points) > 2 : 
-#                hull = ConvexHull(points)
-#                for simplex in hull.simplices:
-#                    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
-#            else:
-#                plt.plot(points[:,0], points[:,1], 'k-')
-#        else:
-#            plt.plot(X[clusters[i][0],0], X[clusters[i][0],1], 'o',color=color[Y[clusters[i][0]]])
-#    
-#    plt.subplot(1,2,2)
+    for i in range(len(clusters)):
+        if len(clusters[i]) > 1:
+            points = np.array([[X[j,0],X[j,1]] for j in clusters[i]])
+            plt.plot(points[:,0], points[:,1], 'o',color=color[Y[clusters[i][0]]])
+            if np.linalg.matrix_rank(points) > 2 : 
+                hull = ConvexHull(points)
+                for simplex in hull.simplices:
+                    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
+            else:
+                plt.plot(points[:,0], points[:,1], 'k-')
+        else:
+            plt.plot(X[clusters[i][0],0], X[clusters[i][0],1], 'o',color=color[Y[clusters[i][0]]])
+    
+    plt.subplot(1,2,2)
     X = iris[:, 2:]
-    clusters = make_hulls(X,Y)
+    clusters = new_make_hulls(X,Y)
     nb_cl_2 = len(clusters)
     print("Deuxieme fait \n")
-#    for i in range(len(clusters)):
-#        if len(clusters[i]) > 1:
-#            points = np.array([[X[j,0],X[j,1]] for j in clusters[i]])
-#            plt.plot(points[:,0], points[:,1], 'o',color=color[Y[clusters[i][0]]])
-#            if np.linalg.matrix_rank(points) > 2 : 
-#                hull = ConvexHull(points)
-#                for simplex in hull.simplices:
-#                    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
-#            else:
-#                plt.plot(points[:,0], points[:,1], 'k-')
-#        else:
-#            plt.plot(X[clusters[i][0],0], X[clusters[i][0],1], 'o',color=color[Y[clusters[i][0]]])
-#    
-#    plt.show()
+    for i in range(len(clusters)):
+        if len(clusters[i]) > 1:
+            points = np.array([[X[j,0],X[j,1]] for j in clusters[i]])
+            plt.plot(points[:,0], points[:,1], 'o',color=color[Y[clusters[i][0]]])
+            if np.linalg.matrix_rank(points) > 2 : 
+                hull = ConvexHull(points)
+                for simplex in hull.simplices:
+                    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
+            else:
+                plt.plot(points[:,0], points[:,1], 'k-')
+        else:
+            plt.plot(X[clusters[i][0],0], X[clusters[i][0],1], 'o',color=color[Y[clusters[i][0]]])
+    
+    plt.show()
     
     X = iris
-    clusters = make_hulls(X,Y)
+    clusters = new_make_hulls(X,Y)
     nb_cl = len(clusters)
     print("Tout fait \n")
     
