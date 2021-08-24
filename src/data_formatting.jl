@@ -67,6 +67,14 @@ function add_cross_product_and_powers(x::Array{Float64,2},deg_max::Int64)
     return hcat(new_x,x_prod)
 end
 
+function train_test_indexes(n::Int64,p::Float64)
+    rd = randperm(n)
+
+    test = rd[1:ceil(Int,n*p)]
+    train = rd[ceil(Int,n*p)+1:n]
+
+    return train,test
+end 
 """
 Returns P lists of indexes partioning data such that in each partition each class is as represented as in the original dataset
 """

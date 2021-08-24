@@ -1,13 +1,32 @@
 include("tests.jl")
-# include("2D_drawing.jl")
+#include("2D_drawing.jl")
 
-# include("../data/small_random_tests/rd_dataset_20_2_4_1.txt")
-# T, obj, error, time, nodes, gap = oct_parmentier(2,0,X,Y,K,quadratic_objective=true)
-# draw_class(X,Y,T,K)
+# function test(T,X_test,Y_test)
+#     Y_pred = predict_class(T,X_test)
+#     errors = Int64[]
+#     for i in 1:length(Y_pred)
+#         if Y_pred[i] != Y_test[i]
+#             push!(errors,i)
+#         end
+#     end
+#     return errors
+# end
 
-test_univarie("iris",4.0,alpha=4,time_l=3600)
-test_univarie("seeds",4.0,alpha=4,time_l=3600)
-test_univarie("wine",4.0,alpha=4,time_l=3600)
-test_univarie("dermatology",5.0,alpha=4,time_l=3600)
-test_univarie("breast_cancer",6.0,alpha=4,time_l=3600)
-test_univarie("blood_donation",6.0,alpha=4,time_l=3600)
+# include("../data/iris.txt")
+# Random.seed!(0)
+# train_indexes,test_indexes = cross_validation_partitioning(Y,K,5)
+# X_train = X[train_indexes[1],:]
+# Y_train = Y[train_indexes[1]]
+# X_test = X[test_indexes[1],:]
+# Y_test = Y[test_indexes[1]]
+# T1, obj1, error1, time1, nodes1, gap1 = flow(2,X_train,Y_train,K,alpha=4.0,multi_variate=true,variable_epsilon = true)
+# T2, obj2, error2, time2, nodes2, gap2 = oct(2,0,X_train,Y_train,K,alpha=4.0,quadratic_objective=true,multi_variate=true,variable_epsilon = true)
+#draw_class(X,Y,T,K)
+
+#tests("iris",3;alpha=4.0,time_l=3600)
+tests("seeds",3;alpha=4.0,time_l=3600)
+tests("wine",3;alpha=4.0,time_l=3600)
+tests("dermatology",3;alpha=5.0,time_l=3600)
+tests("breast_cancer",3;alpha=6.0,time_l=3600)
+tests("blood_donation",3;alpha=6.0,time_l=3600)
+tests("german",3;alpha=7.0,time_l=3600)

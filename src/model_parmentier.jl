@@ -1,6 +1,6 @@
 include("oct_mip.jl")
 
-function get_tree(x::Array{Float64,2},D::Int64,a::Array{Float64,2},z::Array{Float64,2})
+function get_tree_discrete(x::Array{Float64,2},D::Int64,a::Array{Float64,2},z::Array{Float64,2},c::Array{Int64,1})
     n = length(x[:,1])
     p = length(x[1,:])
 
@@ -40,7 +40,7 @@ function get_tree(x::Array{Float64,2},D::Int64,a::Array{Float64,2},z::Array{Floa
         eps_tree[t] = (b_tree_r[t] - b_tree_l[t])/2
     end
 
-    return a_tree, b_tree, eps_tree
+    return Tree(D,a_tree,b_tree,c,eps=eps_tree)
 end
 
 function compute_Xp(x::Array{Float64,2},y::Array{Int64,1})
@@ -116,7 +116,7 @@ function TreeVariablesandConstraints_Pmodel(m::Model,D::Int64,p::Int64,nb_val::A
     @constraint(m, [t in 2:nb_br], d[t] <= d[t ÷ 2])
     @constraint(m,[t in 1:nb_br], sum(a[j,t] for j in 1:p) == d[t])
     @constraint(m,[t in 1:nb_br,j in 1:p], b[j,t,1] == 0)
-    @constraint(m,[t in 1:nb_br,j in 1:p], a[j,t] <= sum(b[j,t,q] for q in 2:nb_val[j]))
+    @constraint(m,[t in 1:nb_br,j in 1:p], a[j,t] <= b[j,t,nb_val[j]])
     @constraint(m,[t in 1:nb_br,j in 1:p,q in 2:nb_val[j]], b[j,t,q-1] <= b[j,t,q])
     @constraint(m,[t in 1:nb_br,j in 1:p,q in 2:nb_val[j]], b[j,t,q] <= a[j,t])
 
@@ -179,11 +179,16 @@ function oct_parmentier(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,
         @constraint(m, [k in 1:K, t in 1:nb_lf], Nk[k,t] == sum(Y[i,k]*z[i,t] for i in 1:n)) # here, Y is in {0,1}
         @constraint(m, [t in 1:nb_lf], N[t] == sum(z[i,t] for i in 1:n))
 
+        @constraint(m, [t in 1:nb_lf], l[t] == sum(c[k,t] for k in 1:K))
+        @constraint(m, [i in 1:n, t in 1:nb_lf], z[i,t] <= l[t])
+        @constraint(m, [t in 1:nb_lf], sum(z[i,t] for i in 1:n) >= Nmin*l[t])
+        @constraint(m, [i in 1:n], sum(z[i,t] for t in 1:nb_lf) == 1)
+
         if C != 0
             @constraint(m, sum(d[t] for t in 1:nb_br) <= C)
             @objective(m,Min,sum(L[t] for t in 1:nb_lf))
         elseif alpha != 0
-            @objective(m,Min,sum(L[t] for t in 1:nb_lf) + L_h*alpha*sum(d[t] for t in 1:nb_br))
+            @objective(m,Min,sum(L[t] for t in 1:nb_lf) + alpha*sum(d[t] for t in 1:nb_br))
         else
             @objective(m,Min,sum(L[t] for t in 1:nb_lf))
         end
@@ -201,11 +206,9 @@ function oct_parmentier(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,
 
     class =  mapslices(argmax,value.(c),dims=1)[:] # it should give us the indexes such that c[:,t] is equal to 1
 
-    a_tree, b_tree, eps_tree = get_tree(x,D,value.(a),value.(z))
+    T =  get_tree_discrete(x,D,value.(a),value.(z),class)
     
     nodes = MOI.get(m, MOI.NodeCount())
-
-    T = Tree(D,a_tree,b_tree,class,eps=eps_tree)
 
     c_ = value.(c)
     z_ = value.(z)

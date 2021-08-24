@@ -29,7 +29,7 @@ def write(X,Y,K,name):
         f.write("K = "+str(K))
 
 ############
-def read_wine():
+def read_wine(write_file,get_xy):
     y = []
     x = []
     with open("../data/unformatted/wine.data", 'r') as f:
@@ -56,54 +56,27 @@ def read_wine():
         x_max = np.max(x[:,j])
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,3,"wine.txt")
-
-def give_wine():
-    y = []
-    x = []
-    with open("../data/unformatted/wine.data", 'r') as f:
-        l = f.readline()
-        while len(l) > 0:
-            y.append(int(l[0]))
-            commas = [1]
-            for i in range(2,len(l)):
-                if l[i] == ",":
-                    commas.append(i)
-            commas.append(len(l)-1)
-            x.append([])
-            for i in range(len(commas)-1):
-                string = l[commas[i]+1:commas[i+1]]
-                if "." in string:
-                    x[-1].append(float(string))
-                else:
-                    x[-1].append(int(string))
-            l = f.readline()
-
-    x = np.array(x)
-    for j in range(np.shape(x)[1]):
-        x_min = np.min(x[:,j])
-        x_max = np.max(x[:,j])
-        for i in range(np.shape(x)[0]):
-            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    return(x,y)
             
-def read_blood_donation():
+    if write_file:
+        write(x,y,3,"wine.txt")
+    if get_xy:
+        return x,y
+            
+def read_blood_donation(write_file,get_xy):
     y = []
     x = []
     with open("../data/unformatted/transfusion.data", 'r') as f:
         l = f.readline()
         l = f.readline()
         while len(l) > 0:
-            commas = []
+            commas = [-1]
             for i in range(len(l)):
                 if l[i] == ",":
                     commas.append(i)
-            commas.append(len(l)-1)
             x.append([])
             for i in range(len(commas)-1):
                 x[-1].append(float(l[commas[i]+1:commas[i+1]]))
-                if i == len(commas)-2:
-                    y.append(int(l[commas[i]+1:commas[i+1]])+1)
+            y.append(int(l[commas[-1]+1:len(l)-1]))
             l = f.readline()
 
     x = np.array(x)
@@ -112,10 +85,14 @@ def read_blood_donation():
         x_max = np.max(x[:,j])
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,2,"blood_donation.txt")
+
+    if write_file:
+        write(x,y,2,"blood_donation.txt")
+    if get_xy:
+        return x,y
 
     
-def read_breast_cancer():
+def read_breast_cancer(write_file,get_xy):
     y = []
     x = []
     with open("../data/unformatted/breast-cancer-wisconsin.data", 'r') as f:
@@ -125,41 +102,6 @@ def read_breast_cancer():
             for i in range(len(l)):
                 if l[i] == ",":
                     commas.append(i)
-            commas.append(len(l)-1)
-            x.append([])
-            missing = False
-            for i in range(1,len(commas)-1):
-                string = l[commas[i]+1:commas[i+1]]
-                if string == "?":
-                    missing = True
-                    break
-                else :
-                    x[-1].append(float(string))
-                    if i == len(commas)-2:
-                        y.append(int(string)//2)
-            if missing:
-                x.pop()
-            l = f.readline()
-
-    x = np.array(x)
-    for j in range(np.shape(x)[1]):
-        x_min = np.min(x[:,j])
-        x_max = np.max(x[:,j])
-        for i in range(np.shape(x)[0]):
-            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,2,"breast_cancer.txt")
-    
-def read_haberman():
-    y = []
-    x = []
-    with open("../data/unformatted/haberman.data", 'r') as f:
-        l = f.readline()
-        while len(l) > 0:
-            commas = []
-            for i in range(len(l)):
-                if l[i] == ",":
-                    commas.append(i)
-            commas.append(len(l)-1)
             x.append([])
             missing = False
             for i in range(len(commas)-1):
@@ -169,10 +111,11 @@ def read_haberman():
                     break
                 else :
                     x[-1].append(float(string))
-                    if i == len(commas)-2:
-                        y.append(int(string))
+                        
             if missing:
                 x.pop()
+            else:
+                y.append(int(l[commas[-1]+1:len(l)-1]))
             l = f.readline()
 
     x = np.array(x)
@@ -181,9 +124,52 @@ def read_haberman():
         x_max = np.max(x[:,j])
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,2,"haberman.txt")
     
-def read_dermatology():
+    if write_file:
+        write(x,y,2,"breast_cancer.txt")
+    if get_xy:
+        return x,y
+    
+def read_haberman(write_file,get_xy):
+    y = []
+    x = []
+    with open("../data/unformatted/haberman.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            commas = [-1]
+            for i in range(len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            x.append([])
+            missing = False
+            for i in range(len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+            
+            if missing:
+                x.pop()
+            else:
+                y.append(int(l[commas[-1]+1:len(l)-1]))
+            
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+   
+    if write_file:
+        write(x,y,2,"haberman.txt")
+    if get_xy:
+        return x,y
+    
+def read_dermatology(write_file,get_xy):
     y = []
     x = []
     with open("../data/unformatted/dermatology.data", 'r') as f:
@@ -193,7 +179,7 @@ def read_dermatology():
             for i in range(len(l)):
                 if l[i] == ",":
                     commas.append(i)
-            commas.append(len(l)-1)
+
             x.append([])
             missing = False
             for i in range(len(commas)-1):
@@ -203,10 +189,10 @@ def read_dermatology():
                     break
                 else :
                     x[-1].append(float(string))
-                    if i == len(commas)-2:
-                        y.append(int(string))
             if missing:
                 x.pop()
+            else:
+                y.append(int(l[commas[-1]+1:len(l)-1]))
             l = f.readline()
 
     x = np.array(x)
@@ -215,9 +201,13 @@ def read_dermatology():
         x_max = np.max(x[:,j])
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,6,"dermatology.txt")
     
-def read_german():
+    if write_file:
+        write(x,y,6,"dermatology.txt")
+    if get_xy:
+        return x,y
+    
+def read_german(write_file,get_xy):
     y = []
     x = []
     with open("../data/unformatted/german-num.data", 'r') as f:
@@ -234,7 +224,7 @@ def read_german():
                 else:
                     space_before = True
             spaces.pop()
-            spaces.append(len(l)-1)
+
             x.append([])
             missing = False
             for i in range(len(spaces)-1):
@@ -244,10 +234,10 @@ def read_german():
                     break
                 else :
                     x[-1].append(float(string))
-                    if i == len(spaces)-2:
-                        y.append(int(string))
             if missing:
                 x.pop()
+            else:
+                y.append(int(l[spaces[-1]+1:len(l)-1]))
             l = f.readline()
 
     x = np.array(x)
@@ -256,9 +246,13 @@ def read_german():
         x_max = np.max(x[:,j])
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,6,"german.txt")
+    
+    if write_file:
+        write(x,y,6,"german.txt")
+    if get_xy:
+        return x,y
 
-def read_seeds():
+def read_seeds(write_file,get_xy):
     y = []
     x = []
     with open("../data/unformatted/seeds_dataset.txt", 'r') as f:
@@ -268,7 +262,7 @@ def read_seeds():
             for i in range(len(l)):
                 if l[i] == "\t":
                     spaces.append(i)
-            spaces.append(len(l)-1)
+
             x.append([])
             missing = False
             for i in range(len(spaces)-1):
@@ -278,10 +272,10 @@ def read_seeds():
                     break
                 else :
                     x[-1].append(float(string))
-                    if i == len(spaces)-2:
-                        y.append(int(string))
             if missing:
                 x.pop()
+            else:
+                y.append(int(l[spaces[-1]+1:len(l)-1]))
             l = f.readline()
 
     x = np.array(x)
@@ -290,7 +284,11 @@ def read_seeds():
         x_max = np.max(x[:,j])
         for i in range(np.shape(x)[0]):
             x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
-    write(x,y,3,"seeds.txt")
+    
+    if write_file:
+        write(x,y,3,"seeds.txt")
+    if get_xy:
+        return x,y
 
 ############
 import matplotlib.pyplot as plt
@@ -354,7 +352,36 @@ def draw_circle(cx,cy,r):
   
     plt.plot( a, b, color = 'black')
 
-plt.close()
-X,Y = creation_cercle(200,0.5,0.5,0.3,0.01)
-draw_circle(0.5,0.5,0.3)
-visu_2D(X,Y,2)
+#plt.close()
+#X,Y = creation_cercle(200,0.5,0.5,0.3,0.01)
+#draw_circle(0.5,0.5,0.3)
+#visu_2D(X,Y,2)
+
+#####
+
+def blobs(n):
+    c = [[0.2,0.8],[0.6,0.7],[0.4,0.3]]
+    r = [0.3,0.4,0.3]
+    
+    X = []
+    Y = []
+    for i in range(3):
+        for j in range(n):
+            not_in_0_1 = True
+            while not_in_0_1:
+                dist = r[i]*(rd.random()*2-1)
+                angle = rd.random()*2*np.pi
+                x = c[i][0]+dist*np.cos(angle)
+                y = c[i][1]+dist*np.sin(angle)
+                not_in_0_1 = 0 > x or 1 < x or 0 > y or 1 < y
+            X.append([x,y])
+            Y.append(i+1)
+    return X,Y
+
+for i in range(20):
+    X,Y = blobs(50)
+    X = np.array(X)
+    write(X,Y,3,"/rd_blobs/rd_blobs_50_2_3_"+str(i+1)+".txt")
+
+
+            

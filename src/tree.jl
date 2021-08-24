@@ -124,7 +124,7 @@ function predict_class(T::Tree, x::Array{Float64,2}; use_eps::Bool=false)
         for i in 1:n
             t = 1
             for d in 1:T.D
-                if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] <= 0
+                if sum(T.a[j,t]*x[i,j] for j in 1:p) - T.b[t] < 0
                     t = t*2
                 else
                     t = t*2 + 1
