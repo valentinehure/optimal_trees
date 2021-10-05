@@ -1,5 +1,5 @@
 using JuMP
-using CPLEX
+# using CPLEX
 using Gurobi
 include("tree.jl")
 
@@ -161,14 +161,22 @@ function flow(D::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64;alpha::Flo
         @constraint(m,[i in 1:n, t in 1:nb_br], z[i,t*2]*(b[t] - mu - eps[t] - sum(x[i,j] * a[j,t] for j in 1:p)) >= 0)
         @constraint(m,[i in 1:n, t in 1:nb_br], z[i,t*2+1]*(- b[t] + sum(x[i,j] * a[j,t] for j in 1:p)) >= 0)
     else
-        @constraint(m,[i in 1:n, t in 1:nb_br], z[i,t*2] <= 1 - sum(x[i,j] * a[j,t] for j in 1:p) + b[t] - mu - eps[t])
-        @constraint(m,[i in 1:n, t in 1:nb_br], z[i,t*2+1] <= 1 + sum(x[i,j] * a[j,t] for j in 1:p) - b[t])
+        # anciennes contraintes qui marchant car si ax - b est à valeur dans -1,1, on peut mettre un coeff pour diminuer
+        # @constraint(m,[i in 1:n, t in 1:nb_br], z[i,t*2] <= 1 - sum(x[i,j] * a[j,t] for j in 1:p) + b[t] - mu - eps[t])
+        # @constraint(m,[i in 1:n, t in 1:nb_br], z[i,t*2+1] <= 1 + sum(x[i,j] * a[j,t] for j in 1:p) - b[t])
+        if multi_variate
+            @constraint(m, [i in 1:n, t in 1:nb_br], sum(x[i,j] * a[j,t] for j in 1:p) + mu + eps[t] <= b[t] + (2+mu)*(1-z[i,t*2]))
+            @constraint(m, [i in 1:n, t in 1:nb_br], sum(x[i,j] * a[j,t] for j in 1:p) >= b[t] - 2*(1-z[i,t*2+1]))
+        else
+            @constraint(m, [i in 1:n, t in 1:nb_br], sum(x[i,j] * a[j,t] for j in 1:p) + mu + eps[t] <= b[t] + (1+mu)*(1-z[i,t*2]))
+            @constraint(m, [i in 1:n, t in 1:nb_br], sum(x[i,j] * a[j,t] for j in 1:p) >= b[t] - (1-z[i,t*2+1]))
+        end
     end
 
     if alpha!=0
         if multi_variate
             if variable_epsilon
-                @objective(m,Min, n - sum(z[i,1] for i in 1:n) + alpha*sum(s[j,t] for j in 1:p for t in 1:nb_br) - 1/nb_br * sum(eps[n] for n in 1:nb_br))
+                @objective(m,Min, n - sum(z[i,1] for i in 1:n) + alpha*sum(s[j,t] for j in 1:p for t in 1:nb_br) - 1/(2*nb_br) * sum(eps[n] for n in 1:nb_br))
             else
                 @objective(m,Min, n - sum(z[i,1] for i in 1:n) + alpha*sum(s[j,t] for j in 1:p for t in 1:nb_br))
             end
@@ -188,7 +196,7 @@ function flow(D::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64;alpha::Flo
             end
         end
         if variable_epsilon
-            @objective(m,Min, n - sum(z[i,1] for i in 1:n) - 1/nb_br * sum(eps[n] for n in 1:nb_br))
+            @objective(m,Min, n - sum(z[i,1] for i in 1:n) - 1/((1+multi_variate)*nb_br) * sum(eps[n] for n in 1:nb_br))
         else
             @objective(m,Min, n - sum(z[i,1] for i in 1:n))
         end

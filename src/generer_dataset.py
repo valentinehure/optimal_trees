@@ -130,6 +130,48 @@ def read_breast_cancer(write_file,get_xy):
     if get_xy:
         return x,y
     
+def read_spambase(write_file,get_xy):
+    y = []
+    x = []
+    with open("../data/unformatted/spambase.data", 'r') as f:
+        l = f.readline()
+        while len(l) > 0:
+            commas = [-1]
+            for i in range(len(l)):
+                if l[i] == ",":
+                    commas.append(i)
+            x.append([])
+            missing = False
+            for i in range(len(commas)-1):
+                string = l[commas[i]+1:commas[i+1]]
+                if string == "?":
+                    missing = True
+                    break
+                else :
+                    x[-1].append(float(string))
+                        
+            if missing:
+                x.pop()
+            else:
+                val_y = int(l[commas[-1]+1:len(l)-1])
+                if val_y == 0:
+                    y.append(1)
+                else:
+                    y.append(2)
+            l = f.readline()
+
+    x = np.array(x)
+    for j in range(np.shape(x)[1]):
+        x_min = np.min(x[:,j])
+        x_max = np.max(x[:,j])
+        for i in range(np.shape(x)[0]):
+            x[i,j] = (x[i,j]-x_min)/(x_max-x_min)
+    
+    if write_file:
+        write(x,y,2,"spambase.txt")
+    if get_xy:
+        return x,y
+    
 def read_haberman(write_file,get_xy):
     y = []
     x = []

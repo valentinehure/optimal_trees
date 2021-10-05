@@ -1,5 +1,5 @@
 using JuMP
-using CPLEX
+# using CPLEX
 using Gurobi
 include("tree.jl")
 
@@ -182,12 +182,13 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
             @constraint(m, [i in 1:n, g in A_L], z[i,t] * (sum(a[j,g]*x[i,j] for j in 1:p) + mu + eps[g] - b[g]) <= 0 )
             @constraint(m, [i in 1:n, g in A_R], z[i,t] * (sum(a[j,g]*x[i,j] for j in 1:p) - b[g]) >= 0)
         else
-            @constraint(m, [i in 1:n, g in A_L], sum(a[j,g]*x[i,j] for j in 1:p) + mu + eps[g] <= b[g] + 2*(1-z[i,t]))
-            @constraint(m, [i in 1:n, g in A_R], sum(a[j,g]*x[i,j] for j in 1:p) >= b[g] - 2*(1-z[i,t]))
-            # meilleures contraintes ? :
-            # @constraint(m,[i in 1:n, g in A_L], z[i,t] <= 1 - sum(x[i,j] * a[j,g] for j in 1:p) + b[g] - mu - eps[g])
-            # @constraint(m,[i in 1:n, g in A_R], z[i,t] <= 1 + sum(x[i,j] * a[j,g] for j in 1:p) - b[g] - eps[g])
-            
+            if multi_variate
+                @constraint(m, [i in 1:n, g in A_L], sum(a[j,g]*x[i,j] for j in 1:p) + mu + eps[g] <= b[g] + (2+mu)*(1-z[i,t]))
+                @constraint(m, [i in 1:n, g in A_R], sum(a[j,g]*x[i,j] for j in 1:p) >= b[g] - 2*(1-z[i,t]))    
+            else
+                @constraint(m, [i in 1:n, g in A_L], sum(a[j,g]*x[i,j] for j in 1:p) + mu + eps[g] <= b[g] + (1+mu)*(1-z[i,t]))
+                @constraint(m, [i in 1:n, g in A_R], sum(a[j,g]*x[i,j] for j in 1:p) >= b[g] - (1-z[i,t]))    
+            end
         end
         @constraint(m, [i in 1:n, g in A_L], z[i,t]<=d[g])
     end
@@ -244,7 +245,7 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
         if alpha != 0
             if variable_epsilon
                 if multi_variate
-                    @objective(m,Min,sum(L[t] for t in 1:nb_lf) + alpha*sum(s[j,t] for t in 1:nb_br for j in 1:p) - 1/nb_br * sum(eps[n] for n in 1:nb_br))
+                    @objective(m,Min,sum(L[t] for t in 1:nb_lf) + alpha*sum(s[j,t] for t in 1:nb_br for j in 1:p) - 1/(2*nb_br) * sum(eps[n] for n in 1:nb_br))
                 else
                     @objective(m,Min,sum(L[t] for t in 1:nb_lf) + alpha*sum(d[t] for t in 1:nb_br) - 1/nb_br * sum(eps[n] for n in 1:nb_br))
                 end
@@ -257,7 +258,7 @@ function oct(D::Int64,Nmin::Int64,x::Array{Float64,2},y::Array{Int64,1},K::Int64
             end
         else
             if variable_epsilon
-                @objective(m,Min,sum(L[t] for t in 1:nb_lf) - 1/nb_br * sum(eps[n] for n in 1:nb_br))
+                @objective(m,Min,sum(L[t] for t in 1:nb_lf) - 1/((1+multi_variate)*nb_br) * sum(eps[n] for n in 1:nb_br))
             else
                 @objective(m,Min,sum(L[t] for t in 1:nb_lf))
             end
